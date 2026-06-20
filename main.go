@@ -54,9 +54,9 @@ func main() {
 
 	mux.Handle("/app/", cfg.middlewareMetricsInc(appHandler))
 
-	mux.HandleFunc("/healthz", healthzHandler)
-	mux.HandleFunc("/metrics", cfg.handlerMetrics)
-	mux.HandleFunc("/reset", cfg.handlerReset)
+	mux.HandleFunc("GET /healthz", healthzHandler)
+	mux.HandleFunc("GET /metrics", cfg.handlerMetrics)
+	mux.HandleFunc("POST /reset", cfg.handlerReset)
 
 	log.Printf("Server started on port: %v", server.Addr)
 	log.Fatal(server.ListenAndServe())
