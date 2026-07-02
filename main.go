@@ -1,14 +1,22 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync/atomic"
+
+	"github.com/JZims/chirpy/internal/database"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
+	queries *database.Queries
+
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -50,11 +58,27 @@ func healthzHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("OK"))
 }
 
+
+
 func main() {
+
+	godotenv.Load()
+	dbURL := os.Getenv("DB_URL")
+
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		log.Fatalf("%v\n", err)
+	}
+
+	dbQueries := database.New(db)
+
+
 
 	port := "8080"
 	mux := http.NewServeMux()
-	cfg := apiConfig{}
+	cfg := apiConfig{
+		queries: dbQueries,
+	}
 	server := &http.Server{
 		Handler: mux,
 		Addr:    ":" + port,
@@ -64,6 +88,7 @@ func main() {
 	mux.Handle("/app/", cfg.middlewareMetricsInc(appHandler))
 
 	mux.HandleFunc("GET /api/healthz", healthzHandler)
+	mux.HandleFunc("POST /api/validate_chirp", handlerChirpsValidate)
 	mux.HandleFunc("GET /admin/metrics", cfg.handlerMetrics)
 	mux.HandleFunc("POST /admin/reset", cfg.handlerReset)
 
