@@ -7,16 +7,25 @@ import (
 	"net/http"
 	"os"
 	"sync/atomic"
+	"time"
 
 	"github.com/JZims/chirpy/internal/database"
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
-	queries *database.Queries
+	queries        *database.Queries
+	platform       string
+}
 
+type User struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Email     string    `json:"email"`
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -44,11 +53,24 @@ func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
+
+	if cfg.platform != "dev" {
+		respondWithError(w, http.StatusForbidden, "This operation is only available in the dev environment.", nil)
+		return
+	}
+
+	err := cfg.queries.DeleteAllUsers(r.Context())
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Error processing deletion.", err)
+		return
+	}
+
 	cfg.fileserverHits.Store(0)
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Hits reset to zero."))
+	w.Write([]byte("Hits reset to zero.\n"))
+	w.Write([]byte("All Users wiped.\n"))
 
 }
 
@@ -57,8 +79,6 @@ func healthzHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
 }
-
-
 
 func main() {
 
@@ -72,23 +92,24 @@ func main() {
 
 	dbQueries := database.New(db)
 
-
-
 	port := "8080"
 	mux := http.NewServeMux()
 	cfg := apiConfig{
-		queries: dbQueries,
+		queries:  dbQueries,
+		platform: os.Getenv("PLATFORM"),
 	}
 	server := &http.Server{
 		Handler: mux,
 		Addr:    ":" + port,
 	}
+
 	appHandler := http.StripPrefix("/app", http.FileServer(http.Dir(".")))
 
 	mux.Handle("/app/", cfg.middlewareMetricsInc(appHandler))
 
 	mux.HandleFunc("GET /api/healthz", healthzHandler)
 	mux.HandleFunc("POST /api/validate_chirp", handlerChirpsValidate)
+	mux.HandleFunc("POST /api/users", cfg.handlerNewUser)
 	mux.HandleFunc("GET /admin/metrics", cfg.handlerMetrics)
 	mux.HandleFunc("POST /admin/reset", cfg.handlerReset)
 
