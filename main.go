@@ -28,6 +28,14 @@ type User struct {
 	Email     string    `json:"email"`
 }
 
+type returnChirpVals struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Body      string    `json:"body"`
+	UserID    uuid.UUID `json:"user_id"`
+}
+
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -108,7 +116,7 @@ func main() {
 	mux.Handle("/app/", cfg.middlewareMetricsInc(appHandler))
 
 	mux.HandleFunc("GET /api/healthz", healthzHandler)
-	mux.HandleFunc("POST /api/validate_chirp", handlerChirpsValidate)
+	mux.HandleFunc("POST /api/chirps", cfg.handlerChirpsCreate)
 	mux.HandleFunc("POST /api/users", cfg.handlerNewUser)
 	mux.HandleFunc("GET /admin/metrics", cfg.handlerMetrics)
 	mux.HandleFunc("POST /admin/reset", cfg.handlerReset)
