@@ -116,9 +116,10 @@ func main() {
 	mux.Handle("/app/", cfg.middlewareMetricsInc(appHandler))
 
 	mux.HandleFunc("GET /api/healthz", healthzHandler)
+	mux.HandleFunc("GET /admin/metrics", cfg.handlerMetrics)
+	mux.HandleFunc("GET /api/chirps", cfg.handlerGetChirps)
 	mux.HandleFunc("POST /api/chirps", cfg.handlerChirpsCreate)
 	mux.HandleFunc("POST /api/users", cfg.handlerNewUser)
-	mux.HandleFunc("GET /admin/metrics", cfg.handlerMetrics)
 	mux.HandleFunc("POST /admin/reset", cfg.handlerReset)
 
 	log.Printf("Server started on port: %v", server.Addr)
