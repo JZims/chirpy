@@ -121,6 +121,7 @@ func main() {
 	mux.HandleFunc("GET /api/chirps/{chirpId}", cfg.handlerGetChirp)
 	mux.HandleFunc("POST /api/chirps", cfg.handlerChirpsCreate)
 	mux.HandleFunc("POST /api/users", cfg.handlerNewUser)
+	mux.HandleFunc("POST /api/login", cfg.handlerLogin)
 	mux.HandleFunc("POST /admin/reset", cfg.handlerReset)
 
 	log.Printf("Server started on port: %v", server.Addr)
