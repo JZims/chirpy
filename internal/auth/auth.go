@@ -1,6 +1,9 @@
 package auth
 
 import (
+	"fmt"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/alexedwards/argon2id"
@@ -25,20 +28,20 @@ func CheckPasswordHash(password, hash string) (bool, error) {
 }
 
 func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error) {
-	mySigningKey := []byte("AllYourBase")
 
 	claims := jwt.RegisteredClaims{
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiresIn)),
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiresIn).UTC()),
+		IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
 		Issuer:    "chirpy-access",
 		Subject:   userID.String(),
 	}
 
 	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signedToken, err := t.SignedString(mySigningKey)
+	signedToken, err := t.SignedString([]byte(tokenSecret))
 	if err != nil {
 		return "", err
 	}
+	// log.Printf(signedToken)
 	return signedToken, nil
 }
 
@@ -55,16 +58,30 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 		return uuid.Nil, err
 	}
 
-	userId, err := t.Claims.GetSubject()
+	userIdStr, err := t.Claims.GetSubject()
 	if err != nil {
 		return uuid.Nil, err
 	}
 
-	userUuid, err := uuid.Parse(userId)
+	userId, err := uuid.Parse(userIdStr)
 	if err != nil {
 		return uuid.Nil, err
 	}
 
-	return userUuid, nil
+	return userId, nil
 
+}
+
+func GetBearerToken(headers http.Header) (string, error) {
+	authHeader := strings.TrimSpace(headers.Get("Authorization"))
+	if authHeader == "" {
+		return "", fmt.Errorf("authorization header not found")
+	}
+
+	parts := strings.Fields(authHeader)
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+		return "", fmt.Errorf("authorization header must be in the form 'Bearer <token>'")
+	}
+
+	return parts[1], nil
 }

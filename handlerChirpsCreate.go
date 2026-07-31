@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
+	"github.com/JZims/chirpy/internal/auth"
 	"github.com/JZims/chirpy/internal/database"
 	"github.com/google/uuid"
 )
@@ -12,8 +14,7 @@ import (
 func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request) {
 
 	type parameters struct {
-		Body string    `json:"body"`
-		User uuid.UUID `json:"user_id"`
+		Body string `json:"body"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -21,6 +22,21 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 	err := decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
+		return
+	}
+
+	// Validatae User has a JWT
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Invalid credentials, bruv", err)
+		return
+	}
+
+	log.Printf("%v", token)
+
+	userRequesting, err := auth.ValidateJWT(token, cfg.secret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Invalid credentials, innit", err)
 		return
 	}
 
@@ -39,7 +55,7 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 		Body:      filtered,
-		UserID:    params.User,
+		UserID:    userRequesting,
 	}
 
 	// Create Chirp in database

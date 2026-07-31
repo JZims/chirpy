@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/JZims/chirpy/internal/auth"
 )
@@ -10,8 +11,13 @@ import (
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 
 	type parameters struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Password         string `json:"password"`
+		Email            string `json:"email"`
+		ExpiresInSeconds int    `json:"expires_in_seconds"`
+	}
+	type response struct {
+		User
+		Token string `json:"token"`
 	}
 
 	ctx := r.Context()
@@ -21,6 +27,13 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
 		return
+	}
+
+	// If request provides ExpiresAt value under an hour, use it. Default to 1 hour
+
+	expirationTime := time.Hour
+	if inputParams.ExpiresInSeconds > 0 && inputParams.ExpiresInSeconds < 3600 {
+		expirationTime = time.Duration(inputParams.ExpiresInSeconds) * time.Second
 	}
 
 	// Get User Info based on email
@@ -37,15 +50,22 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create JSON for response
-	userObj := User{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
+	// Use info to create JWT
+	token, err := auth.MakeJWT(user.ID, cfg.secret, expirationTime)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Unable to create auth token", err)
+		return
 	}
 
 	// Return user obj sans password
-	respondWithJSON(w, http.StatusOK, userObj)
+	respondWithJSON(w, http.StatusOK, response{
+		User: User{
+			ID:        user.ID,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+			Email:     user.Email,
+		},
+		Token: token,
+	})
 
 }
