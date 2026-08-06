@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"time"
 
@@ -32,7 +31,7 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	log.Printf("%v", token)
+	// log.Printf("%v", token)
 
 	userRequesting, err := auth.ValidateJWT(token, cfg.secret)
 	if err != nil {
