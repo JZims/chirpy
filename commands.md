@@ -1,0 +1,1 @@
+Postgres connection string: goose postgres "postgres://jzimms:@localhost:5432/chirpy" up       

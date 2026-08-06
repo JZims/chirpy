@@ -125,6 +125,8 @@ func main() {
 	mux.HandleFunc("POST /api/users", cfg.handlerNewUser)
 	mux.HandleFunc("POST /api/login", cfg.handlerLogin)
 	mux.HandleFunc("POST /admin/reset", cfg.handlerReset)
+	mux.HandleFunc("POST /api/refresh", cfg.handlerRefresh)
+	mux.HandleFunc("POST /api/revoke", cfg.handlerRevoke)
 
 	log.Printf("Server started on port: %v", server.Addr)
 	log.Fatal(server.ListenAndServe())

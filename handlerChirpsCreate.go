@@ -28,7 +28,7 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 	// Validatae User has a JWT
 	token, err := auth.GetBearerToken(r.Header)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Invalid credentials, bruv", err)
+		respondWithError(w, http.StatusUnauthorized, "Invalid credentials", err)
 		return
 	}
 
@@ -36,7 +36,7 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 
 	userRequesting, err := auth.ValidateJWT(token, cfg.secret)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Invalid credentials, innit", err)
+		respondWithError(w, http.StatusUnauthorized, "Invalid credentials", err)
 		return
 	}
 
